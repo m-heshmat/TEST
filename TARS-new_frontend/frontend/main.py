@@ -14,8 +14,6 @@ as a warning to the next developer:
 total_hours_lost_here = 22
 """
 
-from hugchat import hugchat
-from hugchat.login import Login
 import streamlit as st
 import subprocess
 import random
@@ -26,27 +24,32 @@ import uuid
 import sys
 import os
 import re
+from typing import List, Dict
 
 config_file_path = os.path.join(str("/".join(__file__.split("/")[:-2])), "tars")
 sys.path.append(config_file_path)
 import config
 
-# Initialize HuggingChat
-@st.cache_resource
-def init_hugchat():
-    chatbot = hugchat.ChatBot()
-    return chatbot
-
-def generate_response(messages, chatbot):
-    # Format conversation history
-    conversation = ""
-    for message in messages[-5:]:  # Only use last 5 messages to keep context manageable
-        role = "Human: " if message["role"] == "user" else "Assistant: "
-        conversation += f"{role}{message['content']}\n"
+# Simple local chatbot that doesn't require API keys
+def generate_response(messages):
+    """Generate a response based on the conversation history without using external APIs"""
+    last_message = messages[-1]["content"].lower()
     
-    # Get response from HuggingChat
-    response = chatbot.chat(conversation)
-    return response
+    # Basic responses for common security questions
+    if "scan" in last_message or "vulnerability" in last_message:
+        return "To scan for vulnerabilities, I would typically use tools like nmap for network scanning, ZAP for web applications, or rustscan for faster port discovery. What specific system are you trying to analyze?"
+    
+    elif "security" in last_message or "protect" in last_message:
+        return "Security best practices include: keeping systems updated, using strong authentication, implementing least privilege access, encrypting sensitive data, and regular security testing. Would you like more specific advice for a particular system?"
+    
+    elif "password" in last_message:
+        return "Strong passwords should be long (12+ characters), use a mix of character types, avoid dictionary words, and be unique for each service. Consider using a password manager to generate and store complex passwords securely."
+    
+    elif "encryption" in last_message:
+        return "For encryption, I recommend using industry-standard algorithms like AES for symmetric encryption and RSA for asymmetric encryption. Always use proper key lengths and secure key management practices."
+    
+    else:
+        return "I can help you with cybersecurity tasks like vulnerability scanning, security assessments, and best practices. What specific security aspect would you like to explore?"
 
 def replace_local_urls(text):
     # regex to match the URLs with localhost, 127.0.0.1, with optional http(s) and www
@@ -143,10 +146,6 @@ def generate_loading_screen(total_boxes=100):
     assets = list(assets)
     return "".join(random.sample(assets, total_boxes))
 
-
-# Initialize HuggingChat
-if "chatbot" not in st.session_state:
-    st.session_state["chatbot"] = init_hugchat()
 
 # Session state initialization
 if "submitted" not in st.session_state:
@@ -323,11 +322,8 @@ if (
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # Generate response using HuggingChat
+        # Generate response using local chatbot
         with st.chat_message("assistant"):
-            response = generate_response(
-                st.session_state.messages,
-                st.session_state["chatbot"]
-            )
+            response = generate_response(st.session_state.messages)
             st.markdown(response)
             st.session_state.messages.append({"role": "assistant", "content": response})
